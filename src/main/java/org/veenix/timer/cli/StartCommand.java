@@ -7,6 +7,7 @@ import org.veenix.timer.persistence.ActivityRepositoryImpl;
 import org.veenix.timer.persistence.DatabaseConnection;
 import org.veenix.timer.service.ActivityService;
 import org.veenix.timer.service.ConfigurationService;
+import picocli.CommandLine.ArgGroup;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -32,8 +33,16 @@ public class StartCommand implements Runnable {
     @Option(names = {"-t", "--type"}, description = "Activity type (BUG, DEVELOP, GENERAL, INFRA, MEETING, OUT_OF_OFFICE, PROBLEM, SUPPORT)")
     private String type;
 
-    @Option(names = {"-c", "--connect"}, description = "Connect to the last activity of today (start time = last activity's end time + 1 minute)")
-    private boolean connect;
+    @ArgGroup(exclusive = true, multiplicity = "0..1")
+    StartTimeOptions startTimeOptions;
+
+    static class StartTimeOptions {
+        @Option(names = {"-c", "--connect"}, description = "Connect to the last activity of today (start time = last activity's end time + 1 minute)")
+        boolean connect;
+
+        @Option(names = {"-s", "--start-time"}, description = "Start time in HH:mm format")
+        String startTime;
+    }
 
     @Override
     public void run() {
@@ -63,9 +72,10 @@ public class StartCommand implements Runnable {
         }
 
         // Determine start time
-        LocalDateTime startTime = LocalDateTime.now();
-        if (connect) {
-            // Find today's activities
+        LocalDateTime startTime;
+
+        if (startTimeOptions != null && startTimeOptions.connect) {
+            // --connect option: use last activity's end time + 1 minute
             LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
             List<Activity> todaysActivities = activityRepository.findByStartTime(startOfDay);
 
@@ -87,6 +97,21 @@ public class StartCommand implements Runnable {
                 // Calculate start time as end time + 1 minute
                 startTime = latestActivity.endTime().plusMinutes(1);
             }
+        } else if (startTimeOptions != null && startTimeOptions.startTime != null) {
+            // --start-time option provided
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+            try {
+                LocalTime time = LocalTime.parse(startTimeOptions.startTime, formatter);
+                startTime = LocalDate.now().atTime(time);
+            } catch (DateTimeParseException e) {
+                System.err.println("Invalid time format for --start-time. Please use HH:mm (e.g., 09:30).");
+                System.exit(1);
+                return;
+            }
+        } else {
+            // No option provided - prompt user for start time
+            LocalTime time = promptForStartTimeWithCurrentDefault();
+            startTime = LocalDate.now().atTime(time);
         }
 
         // Start the activity
@@ -172,6 +197,30 @@ public class StartCommand implements Runnable {
                     // Should not happen as config validates, but handle gracefully
                     return LocalTime.of(9, 0);
                 }
+            }
+
+            // Try to parse the time
+            try {
+                return LocalTime.parse(input, formatter);
+            } catch (DateTimeParseException e) {
+                System.out.println("Invalid time format. Please use hh:mm (e.g., 09:30).");
+            }
+        }
+    }
+
+    private LocalTime promptForStartTimeWithCurrentDefault() {
+        Scanner scanner = new Scanner(System.in);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        LocalTime currentTime = LocalTime.now();
+        String currentTimeStr = currentTime.format(formatter);
+
+        while (true) {
+            System.out.print("Enter start time (hh:mm) [current time: " + currentTimeStr + "]: ");
+            String input = scanner.nextLine().trim();
+
+            // Empty input - use current time
+            if (input.isEmpty()) {
+                return currentTime;
             }
 
             // Try to parse the time
