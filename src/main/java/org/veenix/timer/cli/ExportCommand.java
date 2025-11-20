@@ -33,8 +33,16 @@ public class ExportCommand implements Runnable {
         @Option(names = {"--date"}, description = "Date in format yyyyMMdd")
         String date;
 
-        @Option(names = {"--from"}, description = "From date in format yyyyMMdd")
+        @ArgGroup(exclusive = false)
+        FromToOptions fromTo;
+    }
+
+    static class FromToOptions {
+        @Option(names = {"--from"}, required = true, description = "From date in format yyyyMMdd")
         String from;
+
+        @Option(names = {"--to"}, description = "To date in format yyyyMMdd (requires --from)")
+        String to;
     }
 
     @Override
@@ -57,15 +65,34 @@ public class ExportCommand implements Runnable {
             }
             fromDateTime = date.atStartOfDay();
             toDateTime = date.atTime(LocalTime.MAX);
-        } else if (dateOptions != null && dateOptions.from != null) {
-            // From date to now
-            LocalDate fromDate = parseDate(dateOptions.from);
+        } else if (dateOptions != null && dateOptions.fromTo != null) {
+            // Date range with --from and optional --to
+            LocalDate fromDate = parseDate(dateOptions.fromTo.from);
             if (fromDate == null) {
-                System.out.println("Invalid date format. Use yyyyMMdd (e.g., 20251027)");
+                System.out.println("Invalid date format for --from. Use yyyyMMdd (e.g., 20251027)");
                 return;
             }
             fromDateTime = fromDate.atStartOfDay();
-            toDateTime = LocalDate.now().atTime(LocalTime.MAX);
+
+            if (dateOptions.fromTo.to != null) {
+                // --to is specified
+                LocalDate toDate = parseDate(dateOptions.fromTo.to);
+                if (toDate == null) {
+                    System.out.println("Invalid date format for --to. Use yyyyMMdd (e.g., 20251027)");
+                    return;
+                }
+
+                // Validate that --to is not before --from
+                if (toDate.isBefore(fromDate)) {
+                    System.err.println("Error: --to date (" + dateOptions.fromTo.to + ") cannot be before --from date (" + dateOptions.fromTo.from + ")");
+                    return;
+                }
+
+                toDateTime = toDate.atTime(LocalTime.MAX);
+            } else {
+                // --to not specified, use current date
+                toDateTime = LocalDate.now().atTime(LocalTime.MAX);
+            }
         } else {
             // Default: today
             LocalDate today = LocalDate.now();
