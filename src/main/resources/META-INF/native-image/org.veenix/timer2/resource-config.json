@@ -2,6 +2,9 @@
   "resources": {
     "includes": [
       {
+        "pattern": "version\\.properties"
+      },
+      {
         "pattern": "org/sqlite/.*"
       },
       {
