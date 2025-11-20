@@ -92,9 +92,9 @@ public class ActivityListCommand implements Runnable {
             System.out.println("No activities found for the specified date range.");
         } else {
             // Print header
-            System.out.printf("%-5s | %-10s | %-5s | %-5s | %-8s | %-10s | %s%n",
-                "ID", "Date", "Start", "End", "Duration", "Status", "Description");
-            System.out.println("------+------------+-------+-------+----------+------------+------------------");
+            System.out.printf("%-5s | %-10s | %-5s | %-5s | %-8s | %-15s | %-10s | %s%n",
+                "ID", "Date", "Start", "End", "Duration", "Type", "Status", "Description");
+            System.out.println("------+------------+-------+-------+----------+-----------------+------------+------------------");
 
             // Print activities and calculate total duration
             long totalMinutes = 0;
@@ -110,11 +110,21 @@ public class ActivityListCommand implements Runnable {
                     ? activity.endTime().format(TIME_FORMATTER)
                     : "-";
                 String duration = formatDuration(activity);
-                String status = activity.status() != null ? activity.status().toString() : "-";
+                String type = activity.activityType() != null ? activity.activityType().toString() : "-";
+                String status;
+                if (activity.status() != null) {
+                    status = switch (activity.status()) {
+                        case ACTIVE -> "Active";
+                        case PAUSED -> "Paused";
+                        case COMPLETED -> "Done";
+                    };
+                } else {
+                    status = "-";
+                }
                 String description = activity.description() != null ? activity.description() : "";
 
-                System.out.printf("%-5s | %-10s | %-5s | %-5s | %-8s | %-10s | %s%n",
-                    id, date, startTime, endTime, duration, status, description);
+                System.out.printf("%-5s | %-10s | %-5s | %-5s | %-8s | %-15s | %-10s | %s%n",
+                    id, date, startTime, endTime, duration, type, status, description);
 
                 // Add to total if both start and end times exist
                 if (activity.startTime() != null && activity.endTime() != null) {
@@ -124,7 +134,7 @@ public class ActivityListCommand implements Runnable {
             }
 
             // Print total line
-            System.out.println("------+------------+-------+-------+----------+------------+------------------");
+            System.out.println("------+------------+-------+-------+----------+-----------------+------------+------------------");
             long hours = totalMinutes / 60;
             long remainingMinutes = totalMinutes % 60;
             System.out.printf("%-5s | %-10s | %-5s | %-5s | %-8s%n",
