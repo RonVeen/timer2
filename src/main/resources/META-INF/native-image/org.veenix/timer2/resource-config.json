@@ -1,0 +1,22 @@
+{
+  "resources": {
+    "includes": [
+      {
+        "pattern": "org/sqlite/.*"
+      },
+      {
+        "pattern": "org/sqlite/native/.*"
+      },
+      {
+        "pattern": ".*\\.so"
+      },
+      {
+        "pattern": ".*\\.dylib"
+      },
+      {
+        "pattern": ".*\\.dll"
+      }
+    ]
+  },
+  "bundles": []
+}
