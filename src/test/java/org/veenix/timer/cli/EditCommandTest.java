@@ -196,4 +196,162 @@ class EditCommandTest {
         Duration duration = Duration.between(found.get().startTime(), found.get().endTime());
         assertEquals(45, duration.toMinutes());
     }
+
+    @Test
+    void testEditActivityWithDifferentEndDate() {
+        // Create activity on Oct 27
+        LocalDateTime start = LocalDateTime.of(2025, 10, 27, 14, 0);
+        LocalDateTime end = LocalDateTime.of(2025, 10, 27, 17, 0);
+
+        Activity activity = Activity.builder()
+                .startTime(start)
+                .endTime(end)
+                .activityType(ActivityType.DEVELOP)
+                .status(ActivityStatus.COMPLETED)
+                .description("Multi-day task")
+                .build();
+
+        Activity saved = activityRepository.save(activity);
+
+        // Update end date to next day (Oct 28)
+        LocalDateTime newEnd = LocalDateTime.of(2025, 10, 28, 10, 0);
+        Activity updated = Activity.builder()
+                .id(saved.id())
+                .startTime(saved.startTime())
+                .endTime(newEnd)
+                .activityType(saved.activityType())
+                .status(saved.status())
+                .description(saved.description())
+                .build();
+
+        activityRepository.update(updated);
+
+        Optional<Activity> found = activityRepository.findById(saved.id());
+        assertTrue(found.isPresent());
+        assertEquals(2025, found.get().endTime().getYear());
+        assertEquals(10, found.get().endTime().getMonthValue());
+        assertEquals(28, found.get().endTime().getDayOfMonth());
+        assertEquals(10, found.get().endTime().getHour());
+
+        // Verify duration spans across days
+        Duration duration = Duration.between(found.get().startTime(), found.get().endTime());
+        assertEquals(20 * 60, duration.toMinutes()); // 20 hours
+    }
+
+    @Test
+    void testEditActivityWithDifferentStartDate() {
+        // Create activity on Oct 27
+        LocalDateTime start = LocalDateTime.of(2025, 10, 27, 9, 0);
+        LocalDateTime end = LocalDateTime.of(2025, 10, 27, 17, 0);
+
+        Activity activity = Activity.builder()
+                .startTime(start)
+                .endTime(end)
+                .activityType(ActivityType.DEVELOP)
+                .status(ActivityStatus.COMPLETED)
+                .description("Task with wrong start date")
+                .build();
+
+        Activity saved = activityRepository.save(activity);
+
+        // Update start date to previous day (Oct 26)
+        LocalDateTime newStart = LocalDateTime.of(2025, 10, 26, 14, 0);
+        Activity updated = Activity.builder()
+                .id(saved.id())
+                .startTime(newStart)
+                .endTime(saved.endTime())
+                .activityType(saved.activityType())
+                .status(saved.status())
+                .description(saved.description())
+                .build();
+
+        activityRepository.update(updated);
+
+        Optional<Activity> found = activityRepository.findById(saved.id());
+        assertTrue(found.isPresent());
+        assertEquals(2025, found.get().startTime().getYear());
+        assertEquals(10, found.get().startTime().getMonthValue());
+        assertEquals(26, found.get().startTime().getDayOfMonth());
+        assertEquals(14, found.get().startTime().getHour());
+
+        // Verify end time unchanged
+        assertEquals(saved.endTime(), found.get().endTime());
+    }
+
+    @Test
+    void testEditActivityCrossingDateBoundary() {
+        // Create activity ending before midnight
+        LocalDateTime start = LocalDateTime.of(2025, 10, 27, 22, 0);
+        LocalDateTime end = LocalDateTime.of(2025, 10, 27, 23, 0);
+
+        Activity activity = Activity.builder()
+                .startTime(start)
+                .endTime(end)
+                .activityType(ActivityType.DEVELOP)
+                .status(ActivityStatus.COMPLETED)
+                .description("Late night task")
+                .build();
+
+        Activity saved = activityRepository.save(activity);
+
+        // Update end time to cross midnight (Oct 28, 2:00 AM)
+        LocalDateTime newEnd = LocalDateTime.of(2025, 10, 28, 2, 0);
+        Activity updated = Activity.builder()
+                .id(saved.id())
+                .startTime(saved.startTime())
+                .endTime(newEnd)
+                .activityType(saved.activityType())
+                .status(saved.status())
+                .description(saved.description())
+                .build();
+
+        activityRepository.update(updated);
+
+        Optional<Activity> found = activityRepository.findById(saved.id());
+        assertTrue(found.isPresent());
+
+        // Verify end time is on the next day
+        assertEquals(27, found.get().startTime().getDayOfMonth());
+        assertEquals(28, found.get().endTime().getDayOfMonth());
+
+        // Verify duration is 4 hours
+        Duration duration = Duration.between(found.get().startTime(), found.get().endTime());
+        assertEquals(4 * 60, duration.toMinutes());
+    }
+
+    @Test
+    void testEditActivityEndTimeBeforeStartTimeValidation() {
+        // Create valid activity
+        LocalDateTime start = LocalDateTime.of(2025, 10, 27, 9, 0);
+        LocalDateTime end = LocalDateTime.of(2025, 10, 27, 17, 0);
+
+        Activity activity = Activity.builder()
+                .startTime(start)
+                .endTime(end)
+                .activityType(ActivityType.DEVELOP)
+                .status(ActivityStatus.COMPLETED)
+                .description("Valid activity")
+                .build();
+
+        Activity saved = activityRepository.save(activity);
+
+        // Try to update with end time before start time
+        LocalDateTime invalidEnd = LocalDateTime.of(2025, 10, 26, 17, 0); // Day before
+        Activity invalidUpdate = Activity.builder()
+                .id(saved.id())
+                .startTime(saved.startTime())
+                .endTime(invalidEnd)
+                .activityType(saved.activityType())
+                .status(saved.status())
+                .description(saved.description())
+                .build();
+
+        // Update should succeed (validation happens in CLI layer)
+        activityRepository.update(invalidUpdate);
+
+        // Verify the invalid data was stored (since repository doesn't validate)
+        Optional<Activity> found = activityRepository.findById(saved.id());
+        assertTrue(found.isPresent());
+        assertTrue(found.get().endTime().isBefore(found.get().startTime()));
+    }
 }

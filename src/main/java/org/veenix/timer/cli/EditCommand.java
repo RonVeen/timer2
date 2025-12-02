@@ -11,6 +11,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -199,30 +200,62 @@ public class EditCommand implements Runnable {
         return (int) duration.toMinutes();
     }
 
+    private LocalDate promptForDate(String label, LocalDate defaultDate) {
+        Scanner scanner = new Scanner(System.in);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+        while (true) {
+            System.out.print("Enter " + label + " date (yyyyMMdd) [" + defaultDate.format(formatter) + "]: ");
+            String input = scanner.nextLine().trim();
+
+            // Empty input - use default date
+            if (input.isEmpty()) {
+                return defaultDate;
+            }
+
+            // Try to parse the date
+            try {
+                return LocalDate.parse(input, formatter);
+            } catch (DateTimeParseException e) {
+                System.out.println("Invalid date format. Please use yyyyMMdd (e.g., 20251027).");
+            }
+        }
+    }
+
     private LocalDateTime promptForStartTime(Activity activity) {
         Scanner scanner = new Scanner(System.in);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+
+        // Prompt for start date first
+        LocalDate newDate = promptForDate("start", activity.startTime().toLocalDate());
 
         // Format current start time
         String currentStartTimeStr = activity.startTime() != null
-            ? activity.startTime().format(formatter)
+            ? activity.startTime().format(timeFormatter)
             : "N/A";
 
+        // Then prompt for start time
         while (true) {
             System.out.print("Enter start time (hh:mm) [current: " + currentStartTimeStr + "]: ");
             String input = scanner.nextLine().trim();
 
-            // If user pressed enter without input, keep current start time
+            // If user pressed enter without input, check if date changed
             if (input.isEmpty()) {
-                return activity.startTime();
+                // If date didn't change, return original start time
+                if (newDate.isEqual(activity.startTime().toLocalDate())) {
+                    return activity.startTime();
+                } else {
+                    // If date changed, combine new date with original time
+                    return newDate.atTime(activity.startTime().toLocalTime());
+                }
             }
 
             // Try to parse the input as HH:mm
             try {
-                LocalTime newTime = LocalTime.parse(input, formatter);
+                LocalTime newTime = LocalTime.parse(input, timeFormatter);
 
-                // Combine with the date from the original start time
-                LocalDateTime newStartTime = activity.startTime().toLocalDate().atTime(newTime);
+                // Combine the new date with the new time
+                LocalDateTime newStartTime = newDate.atTime(newTime);
 
                 return newStartTime;
             } catch (DateTimeParseException e) {
@@ -233,40 +266,54 @@ public class EditCommand implements Runnable {
 
     private LocalDateTime promptForEndTime(Activity activity, LocalDateTime newStartTime) {
         Scanner scanner = new Scanner(System.in);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+        // Prompt for end date first
+        LocalDate newDate = promptForDate("end", activity.endTime().toLocalDate());
 
         // Format current end time
         String currentEndTimeStr = activity.endTime() != null
-            ? activity.endTime().format(formatter)
+            ? activity.endTime().format(timeFormatter)
             : "N/A";
 
+        // Then prompt for end time
         while (true) {
             System.out.print("Enter end time (hh:mm) [current: " + currentEndTimeStr + "]: ");
             String input = scanner.nextLine().trim();
 
-            // If user pressed enter without input, keep current end time
+            LocalDateTime newEndTime;
+
+            // If user pressed enter without input, check if date changed
             if (input.isEmpty()) {
-                return activity.endTime();
-            }
+                // If date didn't change, return original end time
+                if (newDate.isEqual(activity.endTime().toLocalDate())) {
+                    newEndTime = activity.endTime();
+                } else {
+                    // If date changed, combine new date with original time
+                    newEndTime = newDate.atTime(activity.endTime().toLocalTime());
+                }
+            } else {
+                // Try to parse the input as HH:mm
+                try {
+                    LocalTime newTime = LocalTime.parse(input, timeFormatter);
 
-            // Try to parse the input as HH:mm
-            try {
-                LocalTime newTime = LocalTime.parse(input, formatter);
-
-                // Combine with the date from the start time
-                LocalDateTime newEndTime = newStartTime.toLocalDate().atTime(newTime);
-
-                // Validate that end time is after start time
-                if (newEndTime.isBefore(newStartTime) || newEndTime.isEqual(newStartTime)) {
-                    System.out.println("End time must be after start time (" +
-                        newStartTime.format(formatter) + "). Please try again.");
+                    // Combine the new date with the new time
+                    newEndTime = newDate.atTime(newTime);
+                } catch (DateTimeParseException e) {
+                    System.out.println("Invalid time format. Please use hh:mm (e.g., 14:30).");
                     continue;
                 }
-
-                return newEndTime;
-            } catch (DateTimeParseException e) {
-                System.out.println("Invalid time format. Please use hh:mm (e.g., 14:30).");
             }
+
+            // Validate that end time is after start time
+            if (newEndTime.isBefore(newStartTime) || newEndTime.isEqual(newStartTime)) {
+                System.out.println("End time must be after start time (" +
+                    newStartTime.format(dateTimeFormatter) + "). Please try again.");
+                continue;
+            }
+
+            return newEndTime;
         }
     }
 }
