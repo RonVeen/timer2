@@ -14,7 +14,8 @@ import picocli.CommandLine.Command;
         EditCommand.class,
         DeleteCommand.class,
         ExportCommand.class,
-        AddCommand.class
+        AddCommand.class,
+        CopyCommand.class
     }
 )
 public class ActivityCommand implements Runnable {
