@@ -171,4 +171,40 @@ class ActivityListCommandTest {
         assertEquals(1, activities.size());
         assertEquals("Target date activity", activities.get(0).description());
     }
+
+    @Test
+    void testListActivitiesYesterday() {
+        LocalDateTime yesterday = LocalDate.now().minusDays(1).atTime(10, 0);
+        LocalDateTime today = LocalDate.now().atTime(14, 0);
+
+        // Create activity from yesterday
+        Activity yesterdayActivity = Activity.builder()
+                .startTime(yesterday)
+                .endTime(yesterday.plusHours(2))
+                .activityType(ActivityType.DEVELOP)
+                .status(ActivityStatus.COMPLETED)
+                .description("Yesterday's work")
+                .build();
+
+        // Create activity from today
+        Activity todayActivity = Activity.builder()
+                .startTime(today)
+                .endTime(today.plusHours(1))
+                .activityType(ActivityType.BUG)
+                .status(ActivityStatus.COMPLETED)
+                .description("Today's work")
+                .build();
+
+        activityRepository.save(yesterdayActivity);
+        activityRepository.save(todayActivity);
+
+        // Test --yesterday flag
+        // Should only return yesterday's activity
+        List<Activity> activities = activityRepository.findByStartTime(
+            LocalDate.now().minusDays(1).atStartOfDay()
+        );
+
+        assertEquals(1, activities.size());
+        assertEquals("Yesterday's work", activities.get(0).description());
+    }
 }

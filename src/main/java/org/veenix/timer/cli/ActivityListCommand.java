@@ -40,6 +40,9 @@ public class ActivityListCommand implements Runnable {
 
         @Option(names = {"--all"}, description = "Show all activities in chronological order")
         boolean all;
+
+        @Option(names = {"-y", "--yesterday", "--yd"}, description = "Show yesterday's activities")
+        boolean yesterday;
     }
 
     @Override
@@ -59,9 +62,13 @@ public class ActivityListCommand implements Runnable {
             LocalDate endDate;
 
             try {
-                if (dateOptions == null || (dateOptions.date == null && dateOptions.from == null)) {
+                if (dateOptions == null || (dateOptions.date == null && dateOptions.from == null && !dateOptions.yesterday)) {
                     // Default: show today's activities
                     targetDate = LocalDate.now();
+                    endDate = targetDate;
+                } else if (dateOptions.yesterday) {
+                    // Show yesterday's activities
+                    targetDate = LocalDate.now().minusDays(1);
                     endDate = targetDate;
                 } else if (dateOptions.date != null) {
                     // Show activities for specific date
