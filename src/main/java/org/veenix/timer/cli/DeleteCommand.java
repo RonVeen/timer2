@@ -11,6 +11,7 @@ import java.util.Optional;
 
 @Command(
     name = "delete",
+    aliases = {"rm"},
     description = "Delete an activity",
     mixinStandardHelpOptions = true
 )
