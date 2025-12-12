@@ -1,5 +1,6 @@
 package org.veenix.timer.cli;
 
+import org.veenix.timer.cli.util.ActivityTypePrompt;
 import org.veenix.timer.model.Activity;
 import org.veenix.timer.model.ActivityStatus;
 import org.veenix.timer.model.ActivityType;
@@ -66,44 +67,10 @@ public class AddCommand implements Runnable {
     }
 
     private ActivityType promptForActivityType(ConfigurationService configService) {
-        Scanner scanner = new Scanner(System.in);
-        ActivityType defaultType = configService.getDefaultActivityType();
-        ActivityType[] types = ActivityType.values();
-
-        // Display numbered list
-        System.out.println("\nSelect activity type:");
-        for (int i = 0; i < types.length; i++) {
-            String marker = types[i] == defaultType ? " (default)" : "";
-            System.out.println((i + 1) + ". " + types[i] + marker);
-        }
-
-        while (true) {
-            System.out.print("Enter choice (1-" + types.length + " or name) [" + defaultType + "]: ");
-            String input = scanner.nextLine().trim();
-
-            // Empty input - use default
-            if (input.isEmpty()) {
-                return defaultType;
-            }
-
-            // Try to parse as number
-            try {
-                int choice = Integer.parseInt(input);
-                if (choice >= 1 && choice <= types.length) {
-                    return types[choice - 1];
-                } else {
-                    System.out.println("Invalid number. Please enter a number between 1 and " + types.length + ".");
-                    continue;
-                }
-            } catch (NumberFormatException e) {
-                // Not a number, try as name
-                try {
-                    return ActivityType.valueOf(input.toUpperCase());
-                } catch (IllegalArgumentException ex) {
-                    System.out.println("Invalid activity type. Please try again.");
-                }
-            }
-        }
+        return ActivityTypePrompt.prompt(
+            configService.getDefaultActivityType(),
+            "default"
+        );
     }
 
     private String promptForDescription() {
