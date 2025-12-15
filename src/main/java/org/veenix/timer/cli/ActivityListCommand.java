@@ -1,6 +1,7 @@
 package org.veenix.timer.cli;
 
 import org.veenix.timer.model.Activity;
+import org.veenix.timer.model.ActivityStatus;
 import org.veenix.timer.persistence.ActivityRepository;
 import org.veenix.timer.persistence.ActivityRepositoryImpl;
 import org.veenix.timer.persistence.DatabaseConnection;
@@ -133,10 +134,19 @@ public class ActivityListCommand implements Runnable {
                 System.out.printf("%-5s | %-10s | %-5s | %-5s | %-8s | %-15s | %-10s | %s%n",
                     id, date, startTime, endTime, duration, type, status, description);
 
-                // Add to total if both start and end times exist
-                if (activity.startTime() != null && activity.endTime() != null) {
-                    Duration activityDuration = Duration.between(activity.startTime(), activity.endTime());
-                    totalMinutes += activityDuration.toMinutes();
+                // Add to total - for ACTIVE activities, calculate to now
+                if (activity.startTime() != null) {
+                    LocalDateTime effectiveEndTime;
+                    if (activity.status() == ActivityStatus.ACTIVE && activity.endTime() == null) {
+                        effectiveEndTime = LocalDateTime.now();
+                    } else {
+                        effectiveEndTime = activity.endTime();
+                    }
+
+                    if (effectiveEndTime != null) {
+                        Duration activityDuration = Duration.between(activity.startTime(), effectiveEndTime);
+                        totalMinutes += activityDuration.toMinutes();
+                    }
                 }
             }
 
@@ -152,11 +162,23 @@ public class ActivityListCommand implements Runnable {
     }
 
     private String formatDuration(Activity activity) {
-        if (activity.startTime() == null || activity.endTime() == null) {
+        if (activity.startTime() == null) {
             return "-";
         }
 
-        Duration duration = Duration.between(activity.startTime(), activity.endTime());
+        // For ACTIVE activities without endTime, calculate duration to now
+        LocalDateTime effectiveEndTime;
+        if (activity.status() == ActivityStatus.ACTIVE && activity.endTime() == null) {
+            effectiveEndTime = LocalDateTime.now();
+        } else {
+            effectiveEndTime = activity.endTime();
+        }
+
+        if (effectiveEndTime == null) {
+            return "-";
+        }
+
+        Duration duration = Duration.between(activity.startTime(), effectiveEndTime);
         long minutes = duration.toMinutes();
 
         return minutes + " min";

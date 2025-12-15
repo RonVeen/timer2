@@ -207,4 +207,46 @@ class ActivityListCommandTest {
         assertEquals(1, activities.size());
         assertEquals("Yesterday's work", activities.get(0).description());
     }
+
+    @Test
+    void testActiveActivityDurationCalculation() {
+        LocalDateTime fiveMinutesAgo = LocalDateTime.now().minusMinutes(5);
+        LocalDateTime now = LocalDateTime.now();
+
+        // Create ACTIVE activity that started 5 minutes ago
+        Activity activeActivity = Activity.builder()
+                .startTime(fiveMinutesAgo)
+                .endTime(null)  // ACTIVE activities have null endTime
+                .activityType(ActivityType.DEVELOP)
+                .status(ActivityStatus.ACTIVE)
+                .description("Active work")
+                .build();
+
+        // Create COMPLETED activity
+        Activity completedActivity = Activity.builder()
+                .startTime(now.minusMinutes(30))
+                .endTime(now.minusMinutes(20))
+                .activityType(ActivityType.MEETING)
+                .status(ActivityStatus.COMPLETED)
+                .description("Completed work")
+                .build();
+
+        activityRepository.save(activeActivity);
+        activityRepository.save(completedActivity);
+
+        List<Activity> activities = activityRepository.findAll();
+
+        // Verify ACTIVE activity is included
+        assertEquals(2, activities.size());
+
+        // Verify ACTIVE activity has been saved correctly
+        Activity savedActive = activities.stream()
+                .filter(a -> a.status() == ActivityStatus.ACTIVE)
+                .findFirst()
+                .orElseThrow();
+
+        assertNotNull(savedActive.startTime());
+        assertNull(savedActive.endTime());  // Should be null for ACTIVE
+        assertEquals(ActivityStatus.ACTIVE, savedActive.status());
+    }
 }
