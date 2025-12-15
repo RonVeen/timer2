@@ -33,6 +33,9 @@ public class EditCommand implements Runnable {
     @Option(names = {"--duration"}, description = "Edit duration in minutes instead of end time")
     private boolean useDuration;
 
+    // Reusable scanner - do not close as it wraps System.in
+    private final Scanner scanner = new Scanner(System.in);
+
     @Override
     public void run() {
         ActivityRepository activityRepository = new ActivityRepositoryImpl(
@@ -101,7 +104,6 @@ public class EditCommand implements Runnable {
     }
 
     private String promptForDescription(String currentDescription) {
-        Scanner scanner = new Scanner(System.in);
         System.out.print("Enter description [current: " + currentDescription + "]: ");
         String input = scanner.nextLine().trim();
 
@@ -125,8 +127,6 @@ public class EditCommand implements Runnable {
     }
 
     private int promptForDuration(int currentMinutes) {
-        Scanner scanner = new Scanner(System.in);
-
         while (true) {
             System.out.print("Enter duration in minutes [current: " + currentMinutes + "]: ");
             String input = scanner.nextLine().trim();
@@ -166,7 +166,6 @@ public class EditCommand implements Runnable {
     }
 
     private LocalDate promptForDate(String label, LocalDate defaultDate) {
-        Scanner scanner = new Scanner(System.in);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
 
         while (true) {
@@ -188,7 +187,6 @@ public class EditCommand implements Runnable {
     }
 
     private LocalDateTime promptForStartTime(Activity activity) {
-        Scanner scanner = new Scanner(System.in);
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
         // Prompt for start date first
@@ -230,7 +228,6 @@ public class EditCommand implements Runnable {
     }
 
     private LocalDateTime promptForEndTime(Activity activity, LocalDateTime newStartTime) {
-        Scanner scanner = new Scanner(System.in);
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 

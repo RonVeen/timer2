@@ -30,17 +30,26 @@ public class CopyCommand implements Runnable {
     @Parameters(index = "0", description = "Activity ID to copy")
     private Long activityId;
 
+    // Reusable scanner - do not close as it wraps System.in
+    private final Scanner scanner = new Scanner(System.in);
+
     @Override
     public void run() {
-        // Step 1: Initialize repository
+        // Step 1: Validate input
+        if (activityId == null || activityId <= 0) {
+            System.out.println("Activity ID must be a positive number.");
+            return;
+        }
+
+        // Step 2: Initialize repository
         ActivityRepository activityRepository = new ActivityRepositoryImpl(
             DatabaseConnection.getInstance()
         );
 
-        // Step 2: Look up the activity by ID
+        // Step 3: Look up the activity by ID
         Optional<Activity> optionalActivity = activityRepository.findById(activityId);
 
-        // Step 3: Check if activity exists
+        // Step 4: Check if activity exists
         if (optionalActivity.isEmpty()) {
             System.out.println("Activity with ID " + activityId + " not found.");
             return;
@@ -48,19 +57,19 @@ public class CopyCommand implements Runnable {
 
         Activity originalActivity = optionalActivity.get();
 
-        // Step 4a: Prompt for activity type
+        // Step 5a: Prompt for activity type
         ActivityType newActivityType = promptForActivityType(originalActivity.activityType());
 
-        // Step 4b: Prompt for description
+        // Step 5b: Prompt for description
         String newDescription = promptForDescription(originalActivity.description());
 
-        // Step 4c: Prompt for start time (includes date + time)
+        // Step 5c: Prompt for start time (includes date + time)
         LocalDateTime newStartTime = promptForStartTime(originalActivity);
 
-        // Step 4d: Prompt for end time (includes date + time)
+        // Step 5d: Prompt for end time (includes date + time)
         LocalDateTime newEndTime = promptForEndTime(originalActivity, newStartTime);
 
-        // Step 5: Create new COMPLETED activity (no ID set - repository will assign)
+        // Step 6: Create new COMPLETED activity (no ID set - repository will assign)
         Activity newActivity = Activity.builder()
                 .startTime(newStartTime)
                 .endTime(newEndTime)
@@ -69,13 +78,13 @@ public class CopyCommand implements Runnable {
                 .description(newDescription)
                 .build();
 
-        // Step 6: Save the new activity
+        // Step 7: Save the new activity
         Activity savedActivity = activityRepository.save(newActivity);
 
-        // Step 7: Calculate duration for display
+        // Step 8: Calculate duration for display
         int duration = calculateDuration(savedActivity);
 
-        // Step 8: Display success message
+        // Step 9: Display success message
         System.out.println("\nActivity copied:");
         System.out.println("  Original ID: " + originalActivity.id());
         System.out.println("  New ID: " + savedActivity.id());
@@ -87,7 +96,6 @@ public class CopyCommand implements Runnable {
     }
 
     private String promptForDescription(String currentDescription) {
-        Scanner scanner = new Scanner(System.in);
         System.out.print("Enter description [current: " + currentDescription + "]: ");
         String input = scanner.nextLine().trim();
 
@@ -124,7 +132,6 @@ public class CopyCommand implements Runnable {
     }
 
     private LocalDate promptForDate(String label, LocalDate defaultDate) {
-        Scanner scanner = new Scanner(System.in);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
 
         while (true) {
@@ -146,7 +153,6 @@ public class CopyCommand implements Runnable {
     }
 
     private LocalDateTime promptForStartTime(Activity activity) {
-        Scanner scanner = new Scanner(System.in);
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
         // Prompt for start date first
@@ -188,7 +194,6 @@ public class CopyCommand implements Runnable {
     }
 
     private LocalDateTime promptForEndTime(Activity activity, LocalDateTime newStartTime) {
-        Scanner scanner = new Scanner(System.in);
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
